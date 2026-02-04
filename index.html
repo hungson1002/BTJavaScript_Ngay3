@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .table th {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: 500;
+        }
+
+        .table {
+            table-layout: fixed;
+        }
+
+        .table tbody td {
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .img-cell {
+            width: 60px;
+            height: 60px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .img-cell img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .img-cell .no-image {
+            color: #6c757d;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .title-cell {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+        }
+
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .sortable:hover {
+            background-color: #0b5ed7 !important;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+        }
+
+        .clickable-row:hover {
+            background-color: #e3f2fd !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="card mb-4">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h2 class="mb-1"><i class="bi bi-box-seam text-primary me-2"></i>Product Dashboard</h2>
+                    <p class="text-muted mb-0">Dữ liệu từ Platzi Fake Store API</p>
+                </div>
+                <div>
+                    <button class="btn btn-success me-2" onclick="openCreateModal()">
+                        <i class="bi bi-plus-lg me-1"></i>Tạo mới
+                    </button>
+                    <button class="btn btn-outline-primary me-2" onclick="exportToCSV()">
+                        <i class="bi bi-download me-1"></i>Export CSV
+                    </button>
+                    <button class="btn btn-primary" onclick="loadProducts()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-box fs-2 text-primary me-3"></i>
+                            <div>
+                                <small class="text-muted">Tổng sản phẩm</small>
+                                <h4 class="mb-0" id="totalProducts">--</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-tags fs-2 text-success me-3"></i>
+                            <div>
+                                <small class="text-muted">Danh mục</small>
+                                <h4 class="mb-0" id="totalCategories">--</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-currency-dollar fs-2 text-warning me-3"></i>
+                            <div>
+                                <small class="text-muted">Giá trung bình</small>
+                                <h4 class="mb-0" id="avgPrice">--</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Pagination Controls -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput"
+                                placeholder="Tìm kiếm theo title..." oninput="handleSearch()">
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <span class="text-muted" id="showingInfo">Đang hiển thị 0 - 0 / 0</span>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <label class="me-2">Hiển thị:</label>
+                        <select class="form-select d-inline-block w-auto" id="pageSizeSelect"
+                            onchange="handlePageSizeChange()">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Alert -->
+        <div class="alert alert-danger d-none" id="errorAlert" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <span id="errorMessage"></span>
+        </div>
+
+        <!-- Products Table -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-table me-2"></i>Danh sách sản phẩm</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="table-responsive" id="tableContainer" style="display: none;">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;">ID</th>
+                                <th class="sortable" onclick="handleSort('title')">
+                                    Title <i class="bi bi-arrow-down-up" id="sortIconTitle"></i>
+                                </th>
+                                <th style="width: 100px;" class="sortable" onclick="handleSort('price')">
+                                    Price <i class="bi bi-arrow-down-up" id="sortIconPrice"></i>
+                                </th>
+                                <th style="width: 130px;">Category</th>
+                                <th style="width: 80px;">Images</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Pagination -->
+            <div class="card-footer bg-white">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0" id="pagination"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail/Edit Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailModalTitle">Chi tiết sản phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="editId">
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" id="editTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" class="form-control" id="editPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="editDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Category ID</label>
+                            <input type="number" class="form-control" id="editCategoryId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Images (URLs, mỗi dòng 1 URL)</label>
+                            <textarea class="form-control" id="editImages" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" onclick="updateProduct()">
+                        <i class="bi bi-save me-1"></i>Lưu thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal fade" id="createModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tạo sản phẩm mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createForm">
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" id="createTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" class="form-control" id="createPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="createDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Category ID</label>
+                            <input type="number" class="form-control" id="createCategoryId" required value="1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Images (URLs, mỗi dòng 1 URL)</label>
+                            <textarea class="form-control" id="createImages" rows="2"
+                                placeholder="https://example.com/image.jpg"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-success" onclick="createProduct()">
+                        <i class="bi bi-plus-lg me-1"></i>Tạo mới
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
